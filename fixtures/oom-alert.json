@@ -1,0 +1,25 @@
+{
+  "version": "4",
+  "receiver": "incident-copilot",
+  "status": "firing",
+  "groupKey": "lab/payment-api",
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "PodMemoryPressure",
+        "severity": "critical",
+        "service": "payment-api",
+        "namespace": "lab",
+        "pod": "payment-api-78c9d5c6b7-abcde"
+      },
+      "annotations": {
+        "summary": "Reinícios após OOMKilled",
+        "description": "O pod reiniciou três vezes em dez minutos; investigar consumo antes de ajustar limites."
+      },
+      "startsAt": "2026-10-13T13:00:00Z",
+      "fingerprint": "synthetic-example"
+    }
+  ]
+}
+

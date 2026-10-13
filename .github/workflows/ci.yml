@@ -1,0 +1,32 @@
+name: Validar triagem de incidentes
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Dry run CLI
+        run: python -m incident_copilot.cli analyze fixtures/oom-alert.json --json > /tmp/triage.json
+      - name: Build container
+        run: docker build -t incident-copilot:ci .
+      - name: Smoke test HTTP authenticated
+        run: |
+          docker run -d --name incident-copilot -p 127.0.0.1:18080:8080 -e INCIDENT_COPILOT_TOKEN='ci-only-example-token-123456789' incident-copilot:ci
+          trap 'docker rm -f incident-copilot' EXIT
+          for attempt in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:18080/healthz >/dev/null; then break; fi
+            sleep 1
+          done
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:18080/webhook/alertmanager -H 'Content-Type: application/json' --data-binary @fixtures/oom-alert.json)" = 401
+          curl -fsS -X POST http://127.0.0.1:18080/webhook/alertmanager -H 'Content-Type: application/json' -H 'Authorization: Bearer ci-only-example-token-123456789' --data-binary @fixtures/oom-alert.json > /tmp/webhook-result.json
+          python -c 'import json; r=json.load(open("/tmp/webhook-result.json")); assert r["alerts"][0]["labels"]["alertname"] == "PodMemoryPressure"'
+
